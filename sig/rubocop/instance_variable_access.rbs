@@ -1,0 +1,8 @@
+# Generated from lib/rubocop/instance_variable_access.rb with RBS::Inline
+
+module Rubocop
+  module InstanceVariableAccess
+    class Error < StandardError
+    end
+  end
+end

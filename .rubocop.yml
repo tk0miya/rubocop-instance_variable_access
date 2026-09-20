@@ -1,0 +1,78 @@
+# NOTE: Rules are sorted in ASCII order.
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.3
+
+plugins:
+  - rubocop-numbered-params
+  - rubocop-rake
+  - rubocop-rbs_inline
+  - rubocop-rspec
+  - rubocop-rspec-unused-let
+
+# Layout
+Layout/LeadingCommentSpace:
+  AllowRBSInlineAnnotation: true
+  AllowSteepAnnotation: true
+
+Layout/LineLength:
+  Max: 120
+
+# Metrics
+Metrics/AbcSize:
+  Max: 20
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*_spec.rb"
+
+Metrics/ClassLength:
+  Max: 200
+
+Metrics/MethodLength:
+  Max: 30
+
+# RSpec
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 10
+
+RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Max: 5
+
+# Style
+Style/AccessorGrouping:
+  Enabled: false
+
+Style/CommentedKeyword:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/HashSyntax:
+  EnforcedShorthandSyntax: always
+
+Style/RbsInline:
+  Mode: opt_out
+
+Style/RbsInline/MissingTypeAnnotation:
+  EnforcedStyle: doc_style_and_return_annotation
+
+Style/RbsInline/RedundantTypeAnnotation:
+  EnforcedStyle: doc_style_and_return_annotation
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes

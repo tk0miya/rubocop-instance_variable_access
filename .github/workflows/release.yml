@@ -1,0 +1,36 @@
+name: Release
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/rubocop/instance_variable_access/version.rb'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby
+          # Skip bundler cache to avoid the cache-poisoning attack at release time:
+          # a poisoned cache written from a PR could otherwise be reused here
+          # and end up shipped to RubyGems.
+          # See https://docs.zizmor.sh/audits/#cache-poisoning
+          bundler-cache: false
+      - name: Install dependencies
+        run: bundle install
+      - name: Publish to RubyGems
+        uses: rubygems/release-gem@052cc82692552de3ef2b81fd670e41d13cba8092 # v1.4.0
