@@ -7,16 +7,27 @@ module RuboCop
       # accessed through reader methods rather than referenced directly, even
       # from within the class that defines them.
       #
-      # Writing to an instance variable (via `=`, `+=`, `||=`, or multiple
-      # assignment) is always allowed, so a memoization idiom such as
-      # `@memo ||= expensive_call` is unaffected, since it writes to the
-      # variable rather than reading it.
+      # Writing to an instance variable (via `=`, `+=`, `||=`, `&&=`, or
+      # multiple assignment) is always allowed, so a memoization idiom such
+      # as `@memo ||= expensive_call` is unaffected, since it writes to the
+      # variable rather than reading it. Reading that same instance variable
+      # anywhere else while computing the value being assigned to it is
+      # allowed too, whether the assignment is a plain `=`
+      # (`@count = @count + 1`, `@count = compute(@count)`) or a compound
+      # assignment that reads it again explicitly
+      # (`@count += compute(@count)`).
       #
       # A method whose name matches the instance variable (`def name; ...;
       # @name; end`, or its class-method equivalent `def self.name; ...;
       # @name; end`) is treated as that variable's own reader, so referencing
       # it there is not itself an offense, no matter what else the method's
       # body does.
+      #
+      # An instance variable read inside a block passed to `instance_eval`,
+      # `instance_exec`, `class_eval`, or `module_eval` on anything other
+      # than `self` is not flagged, since `self` (and therefore whose
+      # instance variable is actually being read) changes inside that
+      # block.
       #
       # @safety
       #   Autocorrection only rewrites `@foo` to `foo` when an `attr_reader`/
@@ -67,12 +78,32 @@ module RuboCop
       #       @first_name ||= compute_first_name
       #     end
       #   end
+      #
+      #   # good (reading `@count` anywhere while rewriting it is fine, `=` or `+=`)
+      #   class Counter
+      #     def increment
+      #       @count = compute(@count)
+      #       @count += compute(@count)
+      #     end
+      #   end
+      #
+      #   # good (`self` changes inside the block, so this isn't Person's own ivar)
+      #   class Person
+      #     def borrow_name_from(other)
+      #       other.instance_eval { @first_name }
+      #     end
+      #   end
       class InstanceVariableAccess < Base
         extend AutoCorrector
 
         MSG: ::String
 
         RESTRICT_ON_SEND: untyped
+
+        # Methods that run their block with `self` rebound to something other
+        # than the block's lexical `self`, so an instance variable read inside
+        # such a block cannot be attributed to the enclosing class/module.
+        SELF_CHANGING_BLOCK_METHODS: untyped
 
         def attr_reader_or_accessor?: (RuboCop::AST::Node node) -> bool
 
@@ -168,6 +199,41 @@ module RuboCop
         #
         # @rbs node: RuboCop::AST::Node
         def same_named_method_body?: (RuboCop::AST::Node node) -> bool
+
+        # Whether `node` sits inside a block that rebinds `self` away from the
+        # enclosing class/module (`klass.instance_eval { @foo }`), making it
+        # impossible to tell whose ivar is actually being read. The search
+        # stops at the nearest enclosing `def`/`defs`, since a method
+        # definition always establishes its own `self` regardless of any
+        # block it happens to be lexically nested in.
+        #
+        # @rbs node: RuboCop::AST::Node
+        def in_self_changing_block?: (RuboCop::AST::Node node) -> bool
+
+        # @rbs node: RuboCop::AST::Node
+        def self_changing_block?: (RuboCop::AST::Node node) -> bool
+
+        # Whether `node` is an instance variable read that appears anywhere
+        # in the value being assigned to that very same instance variable —
+        # whether by a plain `=` (`@x = @x + 1`, `@x = process(@x)`) or a
+        # compound assignment (`@x += @x + 1`, `@x += process(@x)`,
+        # `@x ||= ...`, `@x &&= ...`). Rewriting an instance variable is
+        # always allowed to read that same instance variable freely while
+        # computing its new value, wherever in the expression it's used. The
+        # search stops at the nearest enclosing `def`/`defs`, so a variable
+        # of the same name assigned in an unrelated enclosing method doesn't
+        # accidentally match.
+        #
+        # @rbs node: RuboCop::AST::Node
+        def self_referential_write?: (RuboCop::AST::Node node) -> bool
+
+        # The instance variable being assigned by `node`, if `node` is a
+        # plain assignment to one (`ivasgn`) or a compound assignment whose
+        # target is one; `nil` otherwise, including when `node` is a
+        # `def`/`defs` boundary the search above stops at.
+        #
+        # @rbs node: RuboCop::AST::Node
+        def assignment_target: (RuboCop::AST::Node node) -> RuboCop::AST::Node?
 
         # @rbs node: RuboCop::AST::Node
         def enclosing_def: (RuboCop::AST::Node node) -> RuboCop::AST::DefNode?
