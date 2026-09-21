@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
+require "rubocop"
+require "rubocop/rspec/support"
+
 require "rubocop/instance_variable_access"
+require "rubocop/cop/instance_variable_access_cops"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

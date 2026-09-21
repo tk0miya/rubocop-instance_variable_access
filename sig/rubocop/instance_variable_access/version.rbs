@@ -1,6 +1,6 @@
 # Generated from lib/rubocop/instance_variable_access/version.rb with RBS::Inline
 
-module Rubocop
+module RuboCop
   module InstanceVariableAccess
     VERSION: ::String
   end

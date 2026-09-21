@@ -2,6 +2,8 @@ PATH
   remote: .
   specs:
     rubocop-instance_variable_access (0.1.0)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.72, < 2.0)
 
 GEM
   remote: https://rubygems.org/
@@ -159,7 +161,6 @@ DEPENDENCIES
   rbs
   rbs-inline
   rspec (~> 3.0)
-  rubocop (~> 1.21)
   rubocop-instance_variable_access!
   rubocop-numbered-params
   rubocop-rake
