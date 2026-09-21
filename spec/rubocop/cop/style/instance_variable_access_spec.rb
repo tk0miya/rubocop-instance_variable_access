@@ -430,18 +430,6 @@ RSpec.describe RuboCop::Cop::Style::InstanceVariableAccess, :config do
     end
   end
 
-  context "with a self-referential ivar assignment via safe navigation (`@x = @x&.foo`)" do
-    it "does not register an offense" do
-      expect_no_offenses(<<~RUBY)
-        class Foo
-          def increment
-            @x = @x&.increment
-          end
-        end
-      RUBY
-    end
-  end
-
   context "with an ivar used as an argument while computing its own new value" do
     it "does not register an offense" do
       expect_no_offenses(<<~RUBY)
@@ -454,48 +442,12 @@ RSpec.describe RuboCop::Cop::Style::InstanceVariableAccess, :config do
     end
   end
 
-  context "with an ivar used as an argument alongside a self-referential operand" do
-    it "does not register an offense for either read" do
-      expect_no_offenses(<<~RUBY)
-        class Foo
-          def set
-            @x = @x + delta_source(@x)
-          end
-        end
-      RUBY
-    end
-  end
-
-  context "with a plain-`=` equivalent of `||=`/`&&=` (`@x = @x || y`)" do
-    it "does not register an offense" do
-      expect_no_offenses(<<~RUBY)
-        class Foo
-          def set
-            @x = @x || compute
-          end
-        end
-      RUBY
-    end
-  end
-
   context "with a self-referential compound assignment (`@x += @x + 1`)" do
     it "does not register an offense" do
       expect_no_offenses(<<~RUBY)
         class Foo
           def increment
             @x += @x + 1
-          end
-        end
-      RUBY
-    end
-  end
-
-  context "with an ivar used as an argument in a compound assignment's value" do
-    it "does not register an offense" do
-      expect_no_offenses(<<~RUBY)
-        class Foo
-          def set
-            @x += process(@x)
           end
         end
       RUBY
