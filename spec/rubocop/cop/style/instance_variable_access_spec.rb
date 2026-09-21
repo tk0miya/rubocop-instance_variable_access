@@ -417,4 +417,291 @@ RSpec.describe RuboCop::Cop::Style::InstanceVariableAccess, :config do
       end
     end
   end
+
+  context "with a self-referential ivar assignment (`@x = @x + 1`)" do
+    it "does not register an offense, just like the equivalent `@x += 1`" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def increment
+            @count = (@count + 1) % 10
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a self-referential ivar assignment via safe navigation (`@x = @x&.foo`)" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def increment
+            @x = @x&.increment
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar used as an argument while computing its own new value" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def set
+            @x = process(@x)
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar used as an argument alongside a self-referential operand" do
+    it "does not register an offense for either read" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def set
+            @x = @x + delta_source(@x)
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a plain-`=` equivalent of `||=`/`&&=` (`@x = @x || y`)" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def set
+            @x = @x || compute
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a self-referential compound assignment (`@x += @x + 1`)" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def increment
+            @x += @x + 1
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar used as an argument in a compound assignment's value" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def set
+            @x += process(@x)
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a self-referential `||=`/`&&=`" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def memoize
+            @x ||= @x || fallback
+            @y &&= @y && extra
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a compound assignment whose value reads a different ivar" do
+    it "still registers an offense for the other ivar" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def set
+            @a += @b + 1
+                  ^^ Use a reader method instead of directly accessing `@b`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a compound assignment whose target isn't an ivar" do
+    it "still registers an offense for an ivar read in its value" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def set(array, obj)
+            array[0] += @x
+                        ^^ Use a reader method instead of directly accessing `@x`.
+            obj.attr += @x
+                        ^^ Use a reader method instead of directly accessing `@x`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a self-referential read on the right-hand side of a multiple assignment" do
+    it "still registers an offense, since multiple assignment isn't exempted" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def set
+            @x, @y = @x, 2
+                     ^^ Use a reader method instead of directly accessing `@x`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar assignment whose value reads a different ivar" do
+    it "still registers an offense for the other ivar" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def set
+            @a = @b + 1
+                 ^^ Use a reader method instead of directly accessing `@b`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a same-named ivar assigned in a different method" do
+    it "still registers an offense for the unrelated read" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def read
+            @x
+            ^^ Use a reader method instead of directly accessing `@x`.
+          end
+
+          def write
+            @x = 1
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a `def` nested inside an assignment to the same-named ivar" do
+    it "still registers an offense for the read inside the nested method body" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def outer
+            @x = def foo
+              @x
+              ^^ Use a reader method instead of directly accessing `@x`.
+            end
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar read inside `instance_eval`/`instance_exec`/`class_eval`/`module_eval` on another object" do
+    it "does not register an offense, since `self` no longer refers to the enclosing class" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def a(klass)
+            klass.instance_eval { @enum_accessors }
+          end
+
+          def b(obj)
+            obj.instance_exec { @x }
+          end
+
+          def c(klass)
+            klass.class_eval { @y }
+          end
+
+          def d(mod)
+            mod.module_eval { @z }
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar read inside `instance_eval` called on `self`" do
+    it "still registers an offense, since `self` does not actually change" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def show
+            self.instance_eval { @x }
+                                 ^^ Use a reader method instead of directly accessing `@x`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar read inside `instance_eval` called with an implicit receiver" do
+    it "still registers an offense, since an implicit receiver is also `self`" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def show
+            instance_eval { @x }
+                            ^^ Use a reader method instead of directly accessing `@x`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar read inside a numbered-parameter block passed to `instance_eval`" do
+    it "does not register an offense" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def build(klass)
+            klass.instance_eval { @x + _1 }
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar read inside a plain block that isn't `instance_eval`" do
+    it "still registers an offense" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def show(items)
+            items.each { @x }
+                         ^^ Use a reader method instead of directly accessing `@x`.
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with an ivar read inside a block nested inside `instance_eval`" do
+    it "does not register an offense, since the changed `self` carries into the nested block" do
+      expect_no_offenses(<<~RUBY)
+        class Foo
+          def build(klass)
+            klass.instance_eval { [1, 2].each { @x } }
+          end
+        end
+      RUBY
+    end
+  end
+
+  context "with a `def` nested inside an `instance_eval` block" do
+    it "still registers an offense for the ivar read in the method body" do
+      expect_offense(<<~RUBY)
+        class Foo
+          def build(klass)
+            klass.instance_eval do
+              def bar
+                @x
+                ^^ Use a reader method instead of directly accessing `@x`.
+              end
+            end
+          end
+        end
+      RUBY
+    end
+  end
 end

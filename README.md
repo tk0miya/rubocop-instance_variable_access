@@ -70,12 +70,31 @@ end
 ```
 
 Writing to an instance variable is always allowed, so a memoization idiom
-such as `@memo ||= expensive_call` is unaffected. A method whose name
-matches the instance variable (`def first_name; ...; @first_name; end`) is
-treated as that variable's own reader, so referencing it there is not
-flagged either, no matter what else the method does first. Class instance
-variables (e.g. `@total` inside `def self.total` or `class << self`) are
-checked the same way as regular instance variables.
+such as `@memo ||= expensive_call` is unaffected. Reading that same
+instance variable anywhere else while computing the value being assigned
+to it is allowed too, whether the assignment is a plain `=`
+(`@count = @count + 1`, `@count = compute(@count)`) or a compound
+assignment that reads it again explicitly (`@count += compute(@count)`).
+
+A method whose name matches the instance variable (`def first_name; ...;
+@first_name; end`) is treated as that variable's own reader, so referencing
+it there is not flagged either, no matter what else the method does first.
+Class instance variables (e.g. `@total` inside `def self.total` or
+`class << self`) are checked the same way as regular instance variables.
+
+An instance variable read inside a block passed to `instance_eval`,
+`instance_exec`, `class_eval`, or `module_eval` on anything other than
+`self` isn't flagged, since `self` (and therefore whose instance variable
+is actually being read) changes inside that block:
+
+```ruby
+# good: `@first_name` belongs to `other`, not to `Person`
+class Person
+  def borrow_name_from(other)
+    other.instance_eval { @first_name }
+  end
+end
+```
 
 Autocorrection only rewrites `@foo` to `foo` when an `attr_reader`/
 `attr_accessor` for `foo` already exists in the same class body; a
