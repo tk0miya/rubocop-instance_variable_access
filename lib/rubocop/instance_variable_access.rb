@@ -2,9 +2,8 @@
 
 require_relative "instance_variable_access/version"
 
-module Rubocop
+module RuboCop
   module InstanceVariableAccess
     class Error < StandardError; end
-    # Your code goes here...
   end
 end

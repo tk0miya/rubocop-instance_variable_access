@@ -1,0 +1,16 @@
+# Generated from lib/rubocop/instance_variable_access/plugin.rb with RBS::Inline
+
+module RuboCop
+  module InstanceVariableAccess
+    # A plugin that integrates rubocop-instance_variable_access with RuboCop's plugin system.
+    class Plugin < LintRoller::Plugin
+      def about: () -> LintRoller::About
+
+      # @rbs context: untyped
+      def supported?: (untyped context) -> bool
+
+      # @rbs _context: untyped
+      def rules: (untyped _context) -> LintRoller::Rules
+    end
+  end
+end

@@ -5,6 +5,7 @@ AllCops:
   TargetRubyVersion: 3.3
 
 plugins:
+  - rubocop-instance_variable_access
   - rubocop-numbered-params
   - rubocop-rake
   - rubocop-rbs_inline
@@ -32,6 +33,11 @@ Metrics/ClassLength:
 
 Metrics/MethodLength:
   Max: 30
+
+# Naming
+Naming/FileName:
+  Exclude:
+    - "lib/rubocop-instance_variable_access.rb"
 
 # RSpec
 RSpec/ExampleLength:

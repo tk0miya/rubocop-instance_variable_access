@@ -1,0 +1,183 @@
+# Generated from lib/rubocop/cop/style/instance_variable_access.rb with RBS::Inline
+
+module RuboCop
+  module Cop
+    module Style
+      # Checks that instance variables (including class instance variables) are
+      # accessed through reader methods rather than referenced directly, even
+      # from within the class that defines them.
+      #
+      # Writing to an instance variable (via `=`, `+=`, `||=`, or multiple
+      # assignment) is always allowed, so a memoization idiom such as
+      # `@memo ||= expensive_call` is unaffected, since it writes to the
+      # variable rather than reading it.
+      #
+      # A method whose name matches the instance variable (`def name; ...;
+      # @name; end`, or its class-method equivalent `def self.name; ...;
+      # @name; end`) is treated as that variable's own reader, so referencing
+      # it there is not itself an offense, no matter what else the method's
+      # body does.
+      #
+      # @safety
+      #   Autocorrection only rewrites `@foo` to `foo` when an `attr_reader`/
+      #   `attr_accessor` for the same instance/singleton context already
+      #   exists in the same class body. A hand-written reader like the one
+      #   above doesn't count, because there is no way to tell whether it is
+      #   safe to call in place of `@foo` (it could have side effects, or
+      #   require arguments). Otherwise, only the offense is reported; this
+      #   cop never generates an `attr_reader`.
+      #
+      # @example
+      #   # bad
+      #   class Person
+      #     def full_name
+      #       "#{@first_name} #{@last_name}"
+      #     end
+      #   end
+      #
+      #   # good
+      #   class Person
+      #     attr_reader :first_name, :last_name
+      #
+      #     def full_name
+      #       "#{first_name} #{last_name}"
+      #     end
+      #   end
+      #
+      #   # good (the reader definition itself is not an offense)
+      #   class Person
+      #     private
+      #
+      #     def first_name
+      #       @first_name
+      #     end
+      #   end
+      #
+      #   # good (still just the reader, whatever else it does first)
+      #   class Person
+      #     def first_name
+      #       logger.debug("first_name accessed")
+      #       @first_name
+      #     end
+      #   end
+      #
+      #   # good (memoization writes to the instance variable rather than reading it)
+      #   class Person
+      #     def first_name
+      #       @first_name ||= compute_first_name
+      #     end
+      #   end
+      class InstanceVariableAccess < Base
+        extend AutoCorrector
+
+        MSG: ::String
+
+        RESTRICT_ON_SEND: untyped
+
+        def attr_reader_or_accessor?: (RuboCop::AST::Node node) -> bool
+
+        # A candidate offense: an instance variable read that isn't inside the
+        # body of a method of the same name. Resolved against the enclosing
+        # scope's readers once the whole class/module body has been seen.
+        class Violation < Data
+          attr_reader node(): RuboCop::AST::Node
+
+          attr_reader singleton(): bool
+
+          def self.new: (RuboCop::AST::Node node, bool singleton) -> instance
+                      | (node: RuboCop::AST::Node, singleton: bool) -> instance
+
+          def self.members: () -> [ :node, :singleton ]
+
+          def members: () -> [ :node, :singleton ]
+        end
+
+        # The readers and pending violations for a single class/module body
+        # (or the top level, for the root scope).
+        class Scope < Struct[Hash[Symbol, Symbol] | Array[Violation] | Integer]
+          attr_accessor instance_readers(): Hash[Symbol, Symbol]
+
+          attr_accessor class_readers(): Hash[Symbol, Symbol]
+
+          attr_accessor violations(): Array[Violation]
+
+          attr_accessor singleton_depth(): Integer
+
+          def self.new: (?instance_readers: Hash[Symbol, Symbol], ?class_readers: Hash[Symbol, Symbol], ?violations: Array[Violation], ?singleton_depth: Integer) -> instance
+                      | ({ ?instance_readers: Hash[Symbol, Symbol], ?class_readers: Hash[Symbol, Symbol], ?violations: Array[Violation], ?singleton_depth: Integer }) -> instance
+        end
+
+        def on_new_investigation: () -> void
+
+        def on_investigation_end: () -> void
+
+        def on_class: (untyped _node) -> void
+
+        alias on_module on_class
+
+        # @rbs _node: RuboCop::AST::Node
+        def after_class: (untyped _node) -> void
+
+        alias after_module after_class
+
+        # @rbs _node: RuboCop::AST::Node
+        def on_sclass: (untyped _node) -> void
+
+        # @rbs _node: RuboCop::AST::Node
+        def after_sclass: (untyped _node) -> void
+
+        # @rbs node: RuboCop::AST::SendNode
+        def on_send: (RuboCop::AST::SendNode node) -> void
+
+        # @rbs node: RuboCop::AST::Node
+        def on_ivar: (RuboCop::AST::Node node) -> void
+
+        private
+
+        attr_reader scope_stack: Array[Scope]
+
+        def push_scope: () -> void
+
+        def pop_scope: () -> void
+
+        def current_scope: () -> Scope
+
+        def singleton_context?: () -> bool
+
+        # Whether we are outside of any class/module, at the top level of the
+        # file. Readers are never registered there, so that a reader defined
+        # at the top level cannot unexpectedly match an unrelated top-level
+        # instance variable.
+        def top_level?: () -> bool
+
+        def report_violations: () -> void
+
+        # @rbs violation: Violation
+        def report_violation: (Violation violation) -> void
+
+        # Whether the instance variable sits in a singleton (class-level)
+        # context: inside `def self.x`, or inside `def x` that is itself
+        # nested in `class << self`.
+        #
+        # @rbs node: RuboCop::AST::Node
+        def civar?: (RuboCop::AST::Node node) -> bool
+
+        # Whether `node` is an instance variable read inside the body of a
+        # method of the same name, regardless of what else that method's
+        # body does.
+        #
+        # @rbs node: RuboCop::AST::Node
+        def same_named_method_body?: (RuboCop::AST::Node node) -> bool
+
+        # @rbs node: RuboCop::AST::Node
+        def enclosing_def: (RuboCop::AST::Node node) -> RuboCop::AST::DefNode?
+
+        # @rbs node: RuboCop::AST::DefNode
+        def bare_method_name: (RuboCop::AST::DefNode node) -> Symbol
+
+        # @rbs node: RuboCop::AST::Node
+        def bare_ivar_name: (RuboCop::AST::Node node) -> Symbol
+      end
+    end
+  end
+end
