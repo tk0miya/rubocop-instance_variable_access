@@ -22,7 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1.335.0
+        uses: ruby/setup-ruby@v1.336.0
         with:
           ruby-version: ruby
           # Skip bundler cache to avoid the cache-poisoning attack at release time:
